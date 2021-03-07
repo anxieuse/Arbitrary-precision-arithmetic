@@ -14,6 +14,91 @@ enum TBigInt_exception {
 const int BASE = 1e5;
 const int RADIX_LEN = 5;
 
+typedef std::complex<long double> base;
+const long double PI = acos(-1);
+
+void fourierTransform(std::vector<base> &a, bool invert) {
+    int n = a.size();
+
+    /* end of recursion: return */
+    if (n == 1)
+        return;
+
+    /* split a into two polynoms of size n/2 */
+    std::vector<base> a0(n / 2);
+    std::vector<base> a1(n / 2);
+    for (int i = 0; i < n; i += 2) {
+        a0[i / 2] = a[i];
+        a1[i / 2] = a[i + 1];
+    }
+
+    /* recursive-call */
+    fourierTransform(a0, invert);
+    fourierTransform(a1, invert);
+
+    /* angle between im. roots */
+    long double ang = (2 * PI / n) * (invert ? -1 : 1);
+
+    base w(1);
+    base wn(cos(ang), sin(ang));
+    for (int i = 0; i < n / 2; ++i) {
+        /* formula: a_(0...n/2 - 1) = a_0 + x * a_1 */
+        a[i] = a0[i] + w * a1[i];
+        /* formula: a_(n/2...n) = a_0 - x * a_1 */
+        a[i + n / 2] = a0[i] - w * a1[i];
+        if (invert) {
+            a[i] /= 2;
+            a[i + n / 2] /= 2;
+        }
+        w *= wn;
+    }
+}
+
+void multiply(const std::vector<int> &a,
+              const std::vector<int> &b,
+              std::vector<long long> &res, int n, int m) {
+    /* polynom with integer-coeffs to imaginary */
+    std::vector<base> complexA(begin(a), end(a));
+    std::vector<base> complexB(begin(b), end(b));
+
+    /* newSize is max(m,n) upper bound, which is a power of two */
+    int newSize = 1;
+    while (newSize < n or newSize < m) {
+        newSize *= 2;
+    }
+    newSize *= 2;
+
+    /* resize complA and compB filling it with zero-coefficients */
+    complexA.resize(newSize);
+    complexB.resize(newSize);
+
+    /* transform coefficients to values of polynoms in each of (2pi/n) im. points  */
+    fourierTransform(complexA, false);
+    fourierTransform(complexB, false);
+
+    /* as known, res(x) value eqs to a(x) * b(x), so lets calculate it, but using complexA as temporary container: */
+    for (int i = 0; i < newSize; ++i) {
+        complexA[i] = complexA[i] * complexB[i];
+    }
+
+    /* finally, get complex coefficients */
+    fourierTransform(complexA, true);
+
+    /* and transform it to real... */
+    res.resize(newSize);
+    for (int i = 0; i < newSize; ++i) {
+        /* ...flooring it's value because of погрешность */
+        res[i] = round(complexA[i].real());
+    }
+
+    int carry = 0;
+    for (int i = 0; i < newSize; ++i) {
+        res[i] += carry;
+        carry = res[i] / BASE;
+        res[i] %= BASE;
+    }
+}
+
 struct TBigInt {
     std::vector<int> digits;
 
