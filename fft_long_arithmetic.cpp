@@ -208,17 +208,11 @@ struct TBigInt {
     TBigInt operator*=(const TBigInt &rhs) {
         int n = this->digits.size();
         int m = rhs.digits.size();
-        std::vector<int> res(n + m, 0);
-        int carry;
-        for (int i = 0; i < n; ++i) {
-            carry = 0;
-            for (int j = 0; j < m || carry; ++j) {
-                long long cur = res[i + j] + carry + 1ll * this->digits[i] * (j < m ? rhs.digits[j] : 0);
-                res[i + j] = cur % BASE;
-                carry = cur / BASE;
-            }
-        }
-        this->digits = res;
+
+        std::vector<long long> res;
+        multiply(this->digits, rhs.digits, res, n, m); 
+
+        this->digits = std::vector<int>(begin(res), end(res));
         this->RemoveLeadingZeros();
         return *this;
     }
